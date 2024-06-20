@@ -163,3 +163,32 @@ function convertCategoryToId(category) {
         default: return '';
     }
 }
+
+function updateHighScore() {
+    const currentScore = Object.values(scores).reduce((total, score) => total + (score || 0), 0);
+    if (currentScore > highScore) {
+        highScore = currentScore;
+        saveHighScore();
+        if (highScoreElement) {
+            highScoreElement.textContent = highScore;
+        }
+    }
+}
+
+function loadHighScore() {
+    const savedHighScore = localStorage.getItem('highScore');
+    if (savedHighScore !== null) {
+        highScore = parseInt(savedHighScore, 10);
+        if (highScoreElement) {
+            highScoreElement.textContent = highScore;
+        }
+    } else {
+        highScore = null;
+        if (highScoreElement) {
+            highScoreElement.textContent = ''; // this broke the layout around 5 times
+        }
+    }
+}
+function saveHighScore() {
+    localStorage.setItem('highScore', highScore);
+}
