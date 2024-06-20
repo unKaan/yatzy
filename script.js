@@ -192,3 +192,30 @@ function loadHighScore() {
 function saveHighScore() {
     localStorage.setItem('highScore', highScore);
 }
+
+function showFinalScorePopup() {
+    const finalScore = Object.values(scores).reduce((total, score) => total + (score || 0), 0);
+    finalScorePopup.innerHTML = `
+        <h2>Game Over</h2>
+        <p>Your final score is ${finalScore}</p>
+        <p>${finalScore > highScore ? 'New high score!' : ''}</p>
+        <button onclick="closeFinalScorePopup()">Close</button>
+    `;
+    finalScorePopup.style.display = 'block';
+    overlay.style.display = 'block';
+}
+
+function closeFinalScorePopup() {
+    finalScorePopup.style.display = 'none';
+    overlay.style.display = 'none';
+    resetGame();
+}
+
+function resetGame() {
+    Object.keys(scores).forEach(key => {
+        scores[key] = null;
+        document.getElementById(`score-${convertCategoryToId(key)}`).textContent = '0';
+        document.getElementById(`score-${convertCategoryToId(key)}`).classList.remove('used');
+    });
+    resetTurn();
+}
