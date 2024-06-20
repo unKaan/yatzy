@@ -11,6 +11,8 @@ header {
     color: white;
     padding: 1em;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    justify-content: space-between;
+    align-items: center;
 }
 
 h1 {
@@ -18,13 +20,47 @@ h1 {
     font-size: 2.5em;
 }
 
+#high-score {
+    font-size: 1.5em;
+}
+
 main {
     padding: 2em;
+}
+
+#scoreboard {
+    margin: 2em 0;
 }
 
 #scoreboard h2 {
     margin-bottom: 1em;
     color: #4682B4;
+}
+
+#score-table {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+#score-table th, #score-table td {
+    padding: 0.5em;
+    border: 1px solid #4682B4;
+    text-align: left;
+}
+
+#score-table .used {
+    position: relative;
+}
+
+#score-table .used::after {
+    content: '★';
+    color: #00008B;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 #dice-area {
@@ -67,6 +103,7 @@ button {
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s, transform 0.3s;
+    margin: 10px;
 }
 
 button:hover {
@@ -77,4 +114,33 @@ button:hover {
 button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+}
+
+/* Popup styles */
+#final-score-popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 2em;
+    border: 2px solid #4682B4;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+#final-score-popup h2 {
+    margin-top: 0;
+}
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
 }
