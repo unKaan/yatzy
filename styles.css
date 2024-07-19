@@ -11,6 +11,7 @@ header {
     color: white;
     padding: 1em;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
     justify-content: space-between;
     align-items: center;
 }
@@ -22,6 +23,16 @@ h1 {
 
 #high-score {
     font-size: 1.5em;
+}
+
+#leaderboard {
+    text-align: left;
+    margin-left: 2em;
+}
+
+#leaderboard-list {
+    list-style: none;
+    padding: 0;
 }
 
 main {

@@ -11,198 +11,160 @@ overlay.id = 'overlay';
 document.body.appendChild(finalScorePopup);
 document.body.appendChild(overlay);
 
-let rollCount = 0;
-let diceValues = [0, 0, 0, 0, 0];
-const keepDice = [false, false, false, false, false];
-const scores = {
-    aces: null,
-    twos: null,
-    threes: null,
-    fours: null,
-    fives: null,
-    sixes: null,
-    threeKind: null,
-    fourKind: null,
-    fullHouse: null,
-    smallStraight: null,
-    largeStraight: null,
-    chance: null,
-    yatzy: null
-};
-let highScore = 0;
+let gameState = {};
 
-diceElements.forEach(dice => {
-    dice.textContent = '-';
-    dice.classList.add('initial');
-});
+function loadGameState() {
+    fetch('/yatzy/api/game.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                gameState = data;
+                console.log('Game state loaded:', gameState);
+                updateUI();
+                if (gameState.game_over) {
+                    showFinalScorePopup();
+                }
+            }
+        })
+        .catch(error => console.error('Error loading game state:', error));
+}
 
-loadHighScore();
+function saveGameState(action, data = {}) {
+    fetch('/yatzy/api/game.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, ...data })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                gameState = data;
+                console.log(`Game state after ${action}:`, gameState);
+                updateUI();
+                if (gameState.game_over) {
+                    showFinalScorePopup();
+                }
+            }
+        })
+        .catch(error => console.error('Error saving game state:', error));
+}
 
-rollButton.addEventListener('click', () => {
-    rollCount++;
-    rollDice();
-    updateDiceDisplay();
-    if (rollCount >= 3) {
-        rollButton.disabled = true;
-    }
-    if (rollCount === 1) {
-        diceElements.forEach(dice => {
-            dice.classList.remove('initial');
-        });
-    }
-    submitScoreButton.disabled = false;
-});
+function rollDice() {
+    console.log('Rolling dice...');
+    saveGameState('roll');
+}
 
-diceElements.forEach((dice, index) => {
-    dice.addEventListener('click', () => {
-        if (rollCount > 0) {
-            keepDice[index] = !keepDice[index];
-            dice.classList.toggle('selected');
+function submitScore(category) {
+    console.log(`Submitting score for category: ${category}`);
+    saveGameState('score', { category });
+}
+
+function resetGame() {
+    console.log('Resetting game...');
+    fetch('/yatzy/api/game.php', {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(() => {
+            loadGameState();
+        })
+        .catch(error => console.error('Error resetting game:', error));
+}
+
+function updateUI() {
+    console.log('Updating UI with game state:', gameState);
+    diceElements.forEach((dice, index) => {
+        dice.textContent = gameState.dice_values[index];
+        if (gameState.keep_dice[index]) {
+            dice.classList.add('selected');
+        } else {
+            dice.classList.remove('selected');
         }
     });
-});
+
+    rollButton.disabled = gameState.roll_count >= 3;
+    submitScoreButton.disabled = gameState.roll_count === 0;
+
+    // Update scores
+    Object.keys(gameState.scores).forEach(category => {
+        const scoreElement = document.getElementById(`score-${convertCategoryToId(category)}`);
+        scoreElement.textContent = gameState.scores[category];
+        if (gameState.scores[category] !== null) {
+            scoreElement.classList.add('used');
+        } else {
+            scoreElement.classList.remove('used');
+        }
+    });
+
+    // Update leaderboard
+    fetch('/yatzy/api/leaderboard.php')
+        .then(response => response.json())
+        .then(data => {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+            data.forEach((score, index) => {
+                const li = document.createElement('li');
+                li.textContent = `${index + 1}. ${score}`;
+                leaderboardList.appendChild(li);
+            });
+        })
+        .catch(error => console.error('Error updating leaderboard:', error));
+
+    // Check for end of game
+    if (Object.keys(gameState.scores).filter(key => gameState.scores[key] === null).length === 0) {
+        showFinalScorePopup();
+    }
+}
+
+rollButton.addEventListener('click', rollDice);
 
 submitScoreButton.addEventListener('click', () => {
-    const availableCategories = Object.keys(scores).filter(key => scores[key] === null);
+    const availableCategories = Object.keys(gameState.scores).filter(key => gameState.scores[key] === null);
     const chosenCategory = prompt(`Choose a category to score: ${availableCategories.join(', ')}`);
 
-    if (availableCategories.includes(chosenCategory)) {
-        scores[chosenCategory] = calculateScore(chosenCategory, diceValues);
-        document.getElementById(`score-${convertCategoryToId(chosenCategory)}`).textContent = scores[chosenCategory];
-        document.getElementById(`score-${convertCategoryToId(chosenCategory)}`).classList.add('used');
-        updateHighScore();
-        if (Object.values(scores).every(score => score !== null)) {
-            showFinalScorePopup();
-        } else {
-            resetTurn();
-        }
+    if (availableCategories.length === 0) {
+        console.error('No available categories left');
     } else {
+        console.log('Available categories:', availableCategories);
+    }
+
+    if (availableCategories.includes(chosenCategory)) {
+        submitScore(chosenCategory);
+    } else {
+        console.error('Invalid category chosen or category already scored');
+        console.log('Chosen category:', chosenCategory);
+        console.log('Available categories:', availableCategories);
         alert('Invalid category chosen or category already scored');
     }
 });
 
-function rollDice() {
-    for (let i = 0; i < diceValues.length; i++) {
-        if (!keepDice[i]) {
-            diceValues[i] = Math.floor(Math.random() * 6) + 1;
+diceElements.forEach((dice, index) => {
+    dice.addEventListener('click', () => {
+        if (gameState.roll_count > 0) {
+            gameState.keep_dice[index] = !gameState.keep_dice[index];
+            saveGameState('keep', { keep_dice: gameState.keep_dice });
+            console.log(`Dice ${index + 1} selected status: ${gameState.keep_dice[index]}`);
+            updateUI();
         }
-    }
-}
-
-function updateDiceDisplay() {
-    diceElements.forEach((dice, index) => {
-        dice.textContent = diceValues[index];
     });
-}
-
-function resetTurn() {
-    rollCount = 0;
-    diceValues = [0, 0, 0, 0, 0];
-    keepDice.fill(false);
-    diceElements.forEach(dice => {
-        dice.textContent = '-';
-        dice.classList.add('initial');
-        dice.classList.remove('selected');
-    });
-    rollButton.disabled = false;
-    submitScoreButton.disabled = true;
-}
-
-function calculateScore(category, diceValues) {
-    const counts = [0, 0, 0, 0, 0, 0];
-    diceValues.forEach(value => counts[value - 1]++);
-
-    switch (category) {
-        case 'aces':
-            return counts[0] * 1;
-        case 'twos':
-            return counts[1] * 2;
-        case 'threes':
-            return counts[2] * 3;
-        case 'fours':
-            return counts[3] * 4;
-        case 'fives':
-            return counts[4] * 5;
-        case 'sixes':
-            return counts[5] * 6;
-        case 'threeKind':
-            return counts.some(count => count >= 3) ? diceValues.reduce((a, b) => a + b) : 0;
-        case 'fourKind':
-            return counts.some(count => count >= 4) ? diceValues.reduce((a, b) => a + b) : 0;
-        case 'fullHouse':
-            return counts.includes(3) && counts.includes(2) ? 25 : 0;
-        case 'smallStraight':
-            return [1, 2, 3, 4, 5].every(num => diceValues.includes(num)) ||
-            [2, 3, 4, 5, 6].every(num => diceValues.includes(num)) ? 30 : 0;
-        case 'largeStraight':
-            return [1, 2, 3, 4, 5, 6].every(num => diceValues.includes(num)) ? 40 : 0;
-        case 'chance':
-            return diceValues.reduce((a, b) => a + b);
-        case 'yatzy':
-            return counts.some(count => count === 5) ? 50 : 0;
-        default:
-            return 0;
-    }
-}
-
-function convertCategoryToId(category) {
-    switch (category) {
-        case 'aces': return 'aces';
-        case 'twos': return 'twos';
-        case 'threes': return 'threes';
-        case 'fours': return 'fours';
-        case 'fives': return 'fives';
-        case 'sixes': return 'sixes';
-        case 'threeKind': return 'three-kind';
-        case 'fourKind': return 'four-kind';
-        case 'fullHouse': return 'full-house';
-        case 'smallStraight': return 'small-straight';
-        case 'largeStraight': return 'large-straight';
-        case 'chance': return 'chance';
-        case 'yatzy': return 'yatzy';
-        default: return '';
-    }
-}
-
-function updateHighScore() {
-    const currentScore = Object.values(scores).reduce((total, score) => total + (score || 0), 0);
-    if (currentScore > highScore) {
-        highScore = currentScore;
-        saveHighScore();
-        if (highScoreElement) {
-            highScoreElement.textContent = highScore;
-        }
-    }
-}
-
-function loadHighScore() {
-    const savedHighScore = localStorage.getItem('highScore');
-    if (savedHighScore !== null) {
-        highScore = parseInt(savedHighScore, 10);
-        if (highScoreElement) {
-            highScoreElement.textContent = highScore;
-        }
-    } else {
-        highScore = null;
-        if (highScoreElement) {
-            highScoreElement.textContent = ''; // this broke the layout around 5 times
-        }
-    }
-}
-function saveHighScore() {
-    localStorage.setItem('highScore', highScore);
-}
+});
 
 function showFinalScorePopup() {
-    const finalScore = Object.values(scores).reduce((total, score) => total + (score || 0), 0);
+    const finalScore = Object.values(gameState.scores).reduce((total, score) => total + (score || 0), 0);
     finalScorePopup.innerHTML = `
         <h2>Game Over</h2>
         <p>Your final score is ${finalScore}</p>
-        <p>${finalScore > highScore ? 'New high score!' : ''}</p>
         <button onclick="closeFinalScorePopup()">Close</button>
     `;
     finalScorePopup.style.display = 'block';
     overlay.style.display = 'block';
+    updateLeaderboard(finalScore);
 }
 
 function closeFinalScorePopup() {
@@ -211,11 +173,22 @@ function closeFinalScorePopup() {
     resetGame();
 }
 
-function resetGame() {
-    Object.keys(scores).forEach(key => {
-        scores[key] = null;
-        document.getElementById(`score-${convertCategoryToId(key)}`).textContent = '0';
-        document.getElementById(`score-${convertCategoryToId(key)}`).classList.remove('used');
-    });
-    resetTurn();
+function updateLeaderboard(score) {
+    fetch('/yatzy/api/leaderboard.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ score })
+    })
+        .then(response => response.json())
+        .then(data => {
+        })
+        .catch(error => console.error('Error updating leaderboard:', error));
 }
+
+function convertCategoryToId(category) {
+    return category.replace(/([A-Z])/g, '-$1').toLowerCase();
+}
+
+loadGameState();

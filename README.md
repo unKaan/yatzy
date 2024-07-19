@@ -31,3 +31,35 @@ The design system for this project includes the following components:
 - **Popup**: Displays the final score and indicates if a new high score is achieved.
 
 For more details, refer to the [Design System Documentation](docs/design_system.md).
+
+
+
+## API Endpoints
+
+### Game State
+
+- **GET /api/game.php**: Get the current game state.
+- **POST /api/game.php**: Update the game state (roll dice, score category).
+- **DELETE /api/game.php**: Reset the game state.
+
+### Leaderboard
+
+- **GET /api/leaderboard.php**: Get the current leaderboard.
+
+## Installation
+
+1. Clone the repository:
+    ```sh
+    git clone <repository-url>
+    cd yatzy-game
+    ```
+
+2. Set up a local PHP server:
+    ```sh
+    php -S localhost:8000
+    ```
+
+3. Open `index.html` in your web browser:
+    ```sh
+    open http://localhost:8000/index.html
+    ```
